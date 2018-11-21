@@ -4,15 +4,48 @@ from hlt.positionals import Direction, Position  # helper for moving
 import random  # randomly picking a choice for now.
 import logging  # logging stuff to console
 import math
+import pandas as pd
 
 game = hlt.Game()  # game object
 # Initializes the game
 game.ready("FirstBot")
 
 ship_states = {}
+
+all_positions_halite = {}
+max_height = game.game_map.height
+max_width = game.game_map.width
+#print(f'Game map is a {max_height}x{max_width}')
+# going to try to iterate through every position on the map and grab the halite amount
+# once we store that in a dictionary, we can begin game planning for where to build shipyards
+
+'''
+game_map = game.game_map
+
+for x in range(max_width):
+    for y in range(max_height):
+        tmp_position = Position(x, y)
+        print(f'tmp_position - {tmp_position}')
+        halite_amount = game_map[tmp_position].halite_amount
+        print(f'halite - {halite_amount}')
+        #all_positions_halite[tmp_position] = halite_amount
+        all_positions_halite[f'{x}-{y}'] = halite_amount
+
+print('\n\nLoop finished\n\n')
+df = pd.DataFrame(all_positions_halite.items()).reset_index()
+df.columns = ['Position', 'Halite']
+df.to_csv('./data/halite.csv')
+'''
+
+x = 0
+y = 0
+
+
+
 while True:
     # This loop handles each turn of the game. The game object changes every turn, and you refresh that state by
     game.update_frame()
+
     # You extract player metadata and the updated map metadata here for convenience.
     me = game.me
 
@@ -21,6 +54,27 @@ while True:
 
     open that file to seee all the things we do with game map.'''
     game_map = game.game_map  # game map data. Recall game is
+
+    max_height = game.game_map.height
+    for y in range(max_height):
+        tmp_position = Position(x, y)
+        #print(f'tmp_position - {tmp_position}')
+        halite_amount = game_map[tmp_position].halite_amount
+        #print(f'halite - {halite_amount}')
+        #all_positions_halite[tmp_position] = halite_amount
+        all_positions_halite[f'{x} {y}'] = halite_amount
+
+    if x == game.game_map.width - 1:
+        df = pd.DataFrame.from_dict(all_positions_halite, orient='index')
+        df.reset_index(inplace=True)
+        df.columns = ['Position', 'Halite']
+
+        df['x'] = df['Position'].str.split(' ', 1).str[0]
+        df['y'] = df['Position'].str.split(' ', 1).str[1]
+
+        df.drop('Position', axis=1, inplace=True)
+
+        df.to_csv('./data/halite.csv', index=False)
 
     # A command queue holds all the commands you will run this turn. You build this list up and submit it at the
     #   end of the turn.
@@ -86,6 +140,10 @@ while True:
     if len(me.get_ships()) < math.ceil(game.turn_number / 25):
         if me.halite_amount >= 1000 and not game_map[me.shipyard].is_occupied:
             command_queue.append(me.shipyard.spawn())
+
+
+    # increasing x so that we can continue to capture the next column of data and halite
+    x += 1
 
     # Send your moves back to the game environment, ending this turn.
     game.end_turn(command_queue)
